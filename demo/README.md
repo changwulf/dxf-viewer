@@ -13,6 +13,7 @@ A comprehensive DXF viewer application with interactive selection tools and laye
 
 #### Line Tool
 - Click near any line to select it
+- **Highlights** the selected line in green with endpoint markers
 - Displays:
   - Line length
   - Start point coordinates (X, Y)
@@ -20,6 +21,7 @@ A comprehensive DXF viewer application with interactive selection tools and laye
 
 #### Hole Tool
 - Click on or near circular features (circles/arcs)
+- **Highlights** the selected circle/hole in green with a red center point
 - Displays:
   - Diameter
   - Radius
@@ -28,6 +30,7 @@ A comprehensive DXF viewer application with interactive selection tools and laye
 
 #### Region Tool
 - Click and drag to select a rectangular region
+- **Highlights** the region with a blue outline and semi-transparent fill
 - Displays:
   - Region width
   - Region height

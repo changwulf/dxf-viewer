@@ -10,6 +10,7 @@ class DxfViewerApp {
         this.selectionStart = null
         this.regionBox = null
         this.entities = []
+        this.highlightObjects = []
 
         this.init()
     }
@@ -257,6 +258,9 @@ class DxfViewerApp {
         if (closestLine) {
             console.log('Selected line:', closestLine)
             const length = this.calculateDistance(closestLine.start, closestLine.end)
+
+            this.highlightLine(closestLine.start, closestLine.end)
+
             this.showSelectionInfo({
                 type: 'Line',
                 dimensions: {
@@ -285,6 +289,9 @@ class DxfViewerApp {
 
                 if (Math.abs(dist - entity.radius) < threshold || dist < entity.radius) {
                     console.log('Selected circle/hole:', entity)
+
+                    this.highlightCircle(entity.center, entity.radius)
+
                     this.showSelectionInfo({
                         type: entity.type === 'arc' ? 'Arc' : 'Circle/Hole',
                         dimensions: {
@@ -332,6 +339,8 @@ class DxfViewerApp {
         const width = maxX - minX
         const height = maxY - minY
         const area = width * height
+
+        this.highlightRegion(minX, maxX, minY, maxY)
 
         this.showSelectionInfo({
             type: 'Region',
@@ -397,6 +406,163 @@ class DxfViewerApp {
 
     hideSelectionInfo() {
         document.getElementById('selectionInfo').classList.add('hidden')
+        this.clearHighlight()
+    }
+
+    clearHighlight() {
+        const scene = this.viewer.GetScene()
+        for (const obj of this.highlightObjects) {
+            scene.remove(obj)
+            if (obj.geometry) obj.geometry.dispose()
+            if (obj.material) obj.material.dispose()
+        }
+        this.highlightObjects = []
+        this.viewer.Render()
+    }
+
+    highlightLine(start, end) {
+        this.clearHighlight()
+
+        const scene = this.viewer.GetScene()
+        const origin = this.viewer.GetOrigin()
+
+        const points = [
+            new THREE.Vector3(start.x - origin.x, start.y - origin.y, 0),
+            new THREE.Vector3(end.x - origin.x, end.y - origin.y, 0)
+        ]
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points)
+        const material = new THREE.LineBasicMaterial({
+            color: 0x00ff00,
+            linewidth: 3,
+            depthTest: false,
+            depthWrite: false
+        })
+
+        const line = new THREE.Line(geometry, material)
+        line.renderOrder = 999
+        scene.add(line)
+        this.highlightObjects.push(line)
+
+        const pointGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(start.x - origin.x, start.y - origin.y, 0),
+            new THREE.Vector3(end.x - origin.x, end.y - origin.y, 0)
+        ])
+        const pointMaterial = new THREE.PointsMaterial({
+            color: 0x00ff00,
+            size: 8,
+            sizeAttenuation: false,
+            depthTest: false,
+            depthWrite: false
+        })
+        const points3d = new THREE.Points(pointGeometry, pointMaterial)
+        points3d.renderOrder = 1000
+        scene.add(points3d)
+        this.highlightObjects.push(points3d)
+
+        this.viewer.Render()
+    }
+
+    highlightCircle(center, radius) {
+        this.clearHighlight()
+
+        const scene = this.viewer.GetScene()
+        const origin = this.viewer.GetOrigin()
+
+        const segments = 64
+        const geometry = new THREE.BufferGeometry()
+        const positions = []
+
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * Math.PI * 2
+            const x = center.x - origin.x + Math.cos(angle) * radius
+            const y = center.y - origin.y + Math.sin(angle) * radius
+            positions.push(x, y, 0)
+        }
+
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+
+        const material = new THREE.LineBasicMaterial({
+            color: 0x00ff00,
+            linewidth: 3,
+            depthTest: false,
+            depthWrite: false
+        })
+
+        const circle = new THREE.Line(geometry, material)
+        circle.renderOrder = 999
+        scene.add(circle)
+        this.highlightObjects.push(circle)
+
+        const centerPointGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(center.x - origin.x, center.y - origin.y, 0)
+        ])
+        const centerPointMaterial = new THREE.PointsMaterial({
+            color: 0xff0000,
+            size: 10,
+            sizeAttenuation: false,
+            depthTest: false,
+            depthWrite: false
+        })
+        const centerPoint = new THREE.Points(centerPointGeometry, centerPointMaterial)
+        centerPoint.renderOrder = 1000
+        scene.add(centerPoint)
+        this.highlightObjects.push(centerPoint)
+
+        this.viewer.Render()
+    }
+
+    highlightRegion(minX, maxX, minY, maxY) {
+        this.clearHighlight()
+
+        const scene = this.viewer.GetScene()
+        const origin = this.viewer.GetOrigin()
+
+        const points = [
+            new THREE.Vector3(minX - origin.x, minY - origin.y, 0),
+            new THREE.Vector3(maxX - origin.x, minY - origin.y, 0),
+            new THREE.Vector3(maxX - origin.x, maxY - origin.y, 0),
+            new THREE.Vector3(minX - origin.x, maxY - origin.y, 0),
+            new THREE.Vector3(minX - origin.x, minY - origin.y, 0)
+        ]
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points)
+        const material = new THREE.LineBasicMaterial({
+            color: 0x00bfff,
+            linewidth: 2,
+            depthTest: false,
+            depthWrite: false
+        })
+
+        const box = new THREE.Line(geometry, material)
+        box.renderOrder = 999
+        scene.add(box)
+        this.highlightObjects.push(box)
+
+        const fillGeometry = new THREE.BufferGeometry()
+        fillGeometry.setAttribute('position', new THREE.Float32BufferAttribute([
+            minX - origin.x, minY - origin.y, 0,
+            maxX - origin.x, minY - origin.y, 0,
+            maxX - origin.x, maxY - origin.y, 0,
+            minX - origin.x, maxY - origin.y, 0
+        ], 3))
+        fillGeometry.setIndex([0, 1, 2, 0, 2, 3])
+
+        const fillMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00bfff,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.DoubleSide,
+            depthTest: false,
+            depthWrite: false
+        })
+
+        const fill = new THREE.Mesh(fillGeometry, fillMaterial)
+        fill.renderOrder = 998
+        scene.add(fill)
+        this.highlightObjects.push(fill)
+
+        this.viewer.Render()
     }
 
     calculateDistance(p1, p2) {
