@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DXF Viewer</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div id="app">
+        <div class="toolbar">
+            <div class="toolbar-section">
+                <h1>DXF Viewer</h1>
+            </div>
+
+            <div class="toolbar-section">
+                <button id="uploadBtn" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 0L4 4h3v6h2V4h3L8 0z"/>
+                        <path d="M14 12v2H2v-2H0v3a1 1 0 001 1h14a1 1 0 001-1v-3h-2z"/>
+                    </svg>
+                    Upload DXF
+                </button>
+                <input type="file" id="fileInput" accept=".dxf" style="display: none">
+
+                <div class="input-group">
+                    <input type="text" id="urlInput" placeholder="Or enter DXF URL..." class="url-input">
+                    <button id="loadUrlBtn" class="btn">Load</button>
+                </div>
+            </div>
+
+            <div class="toolbar-section">
+                <div class="tool-group">
+                    <span class="tool-label">Selection Tool:</span>
+                    <button id="selectLineBtn" class="btn tool-btn" data-tool="line">Line</button>
+                    <button id="selectHoleBtn" class="btn tool-btn" data-tool="hole">Hole</button>
+                    <button id="selectRegionBtn" class="btn tool-btn" data-tool="region">Region</button>
+                    <button id="selectNoneBtn" class="btn tool-btn active" data-tool="none">None</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-container">
+            <div class="sidebar" id="layersPanel">
+                <h3>Layers</h3>
+                <div id="layersList" class="layers-list">
+                    <p class="empty-state">No DXF file loaded</p>
+                </div>
+            </div>
+
+            <div class="viewer-container">
+                <div id="viewer" class="viewer"></div>
+                <div id="selectionInfo" class="selection-info hidden">
+                    <h4>Selection Details</h4>
+                    <div id="dimensionsDisplay"></div>
+                </div>
+                <div id="regionSelector" class="region-selector hidden"></div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <div id="loadingText">Loading...</div>
+        </div>
+    </div>
+
+    <script type="module" src="/main.js"></script>
+</body>
+</html>
