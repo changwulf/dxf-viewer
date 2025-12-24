@@ -20,7 +20,8 @@ class DxfViewerApp {
         this.viewer = new DxfViewer(container, {
             autoResize: true,
             clearColor: new THREE.Color('#2c3e50'),
-            colorCorrection: true
+            colorCorrection: true,
+            retainParsedDxf: true
         })
 
         this.setupEventListeners()
@@ -120,25 +121,28 @@ class DxfViewerApp {
         const dxf = this.viewer.GetDxf()
 
         if (!dxf || !dxf.entities) {
+            console.warn('No DXF entities found')
             return
         }
 
+        console.log('Total DXF entities:', dxf.entities.length)
+
         for (const entity of dxf.entities) {
-            if (entity.type === 'LINE') {
+            if (entity.type === 'LINE' && entity.vertices && entity.vertices.length >= 2) {
                 this.entities.push({
                     type: 'line',
                     start: entity.vertices[0],
                     end: entity.vertices[1],
                     layer: entity.layer
                 })
-            } else if (entity.type === 'CIRCLE') {
+            } else if (entity.type === 'CIRCLE' && entity.center && entity.radius) {
                 this.entities.push({
                     type: 'circle',
                     center: entity.center,
                     radius: entity.radius,
                     layer: entity.layer
                 })
-            } else if (entity.type === 'ARC') {
+            } else if (entity.type === 'ARC' && entity.center && entity.radius) {
                 this.entities.push({
                     type: 'arc',
                     center: entity.center,
@@ -147,7 +151,7 @@ class DxfViewerApp {
                     endAngle: entity.endAngle,
                     layer: entity.layer
                 })
-            } else if (entity.type === 'LWPOLYLINE' || entity.type === 'POLYLINE') {
+            } else if ((entity.type === 'LWPOLYLINE' || entity.type === 'POLYLINE') && entity.vertices) {
                 this.entities.push({
                     type: 'polyline',
                     vertices: entity.vertices,
@@ -155,6 +159,14 @@ class DxfViewerApp {
                 })
             }
         }
+
+        console.log('Extracted entities:', {
+            lines: this.entities.filter(e => e.type === 'line').length,
+            circles: this.entities.filter(e => e.type === 'circle').length,
+            arcs: this.entities.filter(e => e.type === 'arc').length,
+            polylines: this.entities.filter(e => e.type === 'polyline').length,
+            total: this.entities.length
+        })
     }
 
     updateLayersList() {
@@ -229,6 +241,9 @@ class DxfViewerApp {
         let closestLine = null
         let minDistance = threshold
 
+        console.log('Line selection - Click pos:', clickPos, 'Threshold:', threshold)
+        console.log('Available lines:', this.entities.filter(e => e.type === 'line').length)
+
         for (const entity of this.entities) {
             if (entity.type === 'line') {
                 const dist = this.pointToLineDistance(clickPos, entity.start, entity.end)
@@ -240,6 +255,7 @@ class DxfViewerApp {
         }
 
         if (closestLine) {
+            console.log('Selected line:', closestLine)
             const length = this.calculateDistance(closestLine.start, closestLine.end)
             this.showSelectionInfo({
                 type: 'Line',
@@ -251,18 +267,26 @@ class DxfViewerApp {
                     'End Y': closestLine.end.y.toFixed(3)
                 }
             })
+        } else {
+            console.log('No line found within threshold')
         }
     }
 
     selectHole(clickPos) {
         const threshold = this.getSelectionThreshold()
 
+        console.log('Hole selection - Click pos:', clickPos, 'Threshold:', threshold)
+        console.log('Available circles:', this.entities.filter(e => e.type === 'circle').length)
+
         for (const entity of this.entities) {
-            if (entity.type === 'circle') {
+            if (entity.type === 'circle' || entity.type === 'arc') {
                 const dist = this.calculateDistance(clickPos, entity.center)
+                console.log('Circle check - dist:', dist, 'radius:', entity.radius)
+
                 if (Math.abs(dist - entity.radius) < threshold || dist < entity.radius) {
+                    console.log('Selected circle/hole:', entity)
                     this.showSelectionInfo({
-                        type: 'Circle/Hole',
+                        type: entity.type === 'arc' ? 'Arc' : 'Circle/Hole',
                         dimensions: {
                             'Diameter': (entity.radius * 2).toFixed(3),
                             'Radius': entity.radius.toFixed(3),
@@ -275,6 +299,7 @@ class DxfViewerApp {
                 }
             }
         }
+        console.log('No circle/hole found within threshold')
     }
 
     startRegionSelection(canvasCoord) {
